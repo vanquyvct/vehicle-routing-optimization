@@ -40,6 +40,12 @@ const exportBenchmarkBtn = document.getElementById("export-benchmark-btn");
 const benchmarkTableBody = document.getElementById("benchmark-table-body");
 const experimentMessage = document.getElementById("experiment-message");
 const testResults = document.getElementById("test-results");
+const benchmarkDashboard = document.getElementById("benchmark-dashboard");
+const benchmarkKpis = document.getElementById("benchmark-kpis");
+const distanceChart = document.getElementById("distance-chart");
+const improvementChart = document.getElementById("improvement-chart");
+const benchmarkObservation = document.getElementById("benchmark-observation");
+const dashboardSource = document.getElementById("dashboard-source");
 
 let lastBenchmarkRows = [];
 
@@ -748,6 +754,361 @@ function formatBenchmarkNumber(value, digits = 2) {
     return Number(value).toFixed(digits);
 }
 
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function safeAverage(values) {
+    const valid = values
+        .map(Number)
+        .filter((value) => Number.isFinite(value));
+
+    if (!valid.length) {
+        return null;
+    }
+
+    return valid.reduce((sum, value) => sum + value, 0) / valid.length;
+}
+
+function createDistanceChart(rows) {
+    const validRows = rows.filter(
+        (row) =>
+            row.status === "ok" &&
+            Number.isFinite(Number(row.baseline_km)) &&
+            Number.isFinite(Number(row.cvrp_km))
+    );
+
+    if (!validRows.length) {
+        distanceChart.innerHTML = '<div class="chart-empty">Chưa có dữ liệu.</div>';
+        return;
+    }
+
+    const width = 760;
+    const height = 300;
+    const margin = {top: 26, right: 22, bottom: 54, left: 54};
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const maxValue = Math.max(
+        ...validRows.flatMap((row) => [
+            Number(row.baseline_km),
+            Number(row.cvrp_km),
+        ])
+    );
+
+    const yMax = Math.max(10, Math.ceil(maxValue / 10) * 10);
+    const groupWidth = innerWidth / validRows.length;
+    const barWidth = Math.min(52, groupWidth * 0.27);
+
+    const y = (value) =>
+        margin.top + innerHeight - (Number(value) / yMax) * innerHeight;
+
+    const baselineColor = "#94a3b8";
+    const cvrpColor = "#4263eb";
+
+    const gridLines = Array.from({length: 5}, (_, index) => {
+        const value = (yMax / 4) * index;
+        const yPosition = y(value);
+
+        return `
+            <line
+                x1="${margin.left}"
+                y1="${yPosition}"
+                x2="${width - margin.right}"
+                y2="${yPosition}"
+                class="chart-grid-line"
+            />
+            <text
+                x="${margin.left - 10}"
+                y="${yPosition + 4}"
+                text-anchor="end"
+                class="chart-axis-label"
+            >${value.toFixed(0)}</text>
+        `;
+    }).join("");
+
+    const groups = validRows.map((row, index) => {
+        const centerX = margin.left + groupWidth * index + groupWidth / 2;
+        const baseline = Number(row.baseline_km);
+        const cvrp = Number(row.cvrp_km);
+        const baselineY = y(baseline);
+        const cvrpY = y(cvrp);
+        const baselineHeight = margin.top + innerHeight - baselineY;
+        const cvrpHeight = margin.top + innerHeight - cvrpY;
+
+        return `
+            <rect
+                x="${centerX - barWidth - 4}"
+                y="${baselineY}"
+                width="${barWidth}"
+                height="${baselineHeight}"
+                rx="5"
+                fill="${baselineColor}"
+            />
+            <rect
+                x="${centerX + 4}"
+                y="${cvrpY}"
+                width="${barWidth}"
+                height="${cvrpHeight}"
+                rx="5"
+                fill="${cvrpColor}"
+            />
+
+            <text
+                x="${centerX - barWidth / 2 - 4}"
+                y="${baselineY - 7}"
+                text-anchor="middle"
+                class="chart-value-label"
+            >${baseline.toFixed(1)}</text>
+
+            <text
+                x="${centerX + barWidth / 2 + 4}"
+                y="${cvrpY - 7}"
+                text-anchor="middle"
+                class="chart-value-label chart-value-primary"
+            >${cvrp.toFixed(1)}</text>
+
+            <text
+                x="${centerX}"
+                y="${height - 23}"
+                text-anchor="middle"
+                class="chart-x-label"
+            >${row.orders} điểm</text>
+        `;
+    }).join("");
+
+    distanceChart.innerHTML = `
+        <svg
+            class="benchmark-svg"
+            viewBox="0 0 ${width} ${height}"
+            role="img"
+            aria-label="Biểu đồ so sánh quãng đường Greedy và CVRP"
+        >
+            ${gridLines}
+
+            <line
+                x1="${margin.left}"
+                y1="${margin.top + innerHeight}"
+                x2="${width - margin.right}"
+                y2="${margin.top + innerHeight}"
+                class="chart-axis-line"
+            />
+
+            ${groups}
+
+            <g transform="translate(${width - 250}, 12)">
+                <rect x="0" y="0" width="11" height="11" rx="2" fill="${baselineColor}" />
+                <text x="17" y="10" class="chart-legend-label">Greedy baseline</text>
+                <rect x="115" y="0" width="11" height="11" rx="2" fill="${cvrpColor}" />
+                <text x="132" y="10" class="chart-legend-label">CVRP</text>
+            </g>
+        </svg>
+    `;
+}
+
+function createImprovementChart(rows) {
+    const validRows = rows.filter(
+        (row) =>
+            row.status === "ok" &&
+            Number.isFinite(Number(row.improvement_percent)) &&
+            Number.isFinite(Number(row.runtime_s))
+    );
+
+    if (!validRows.length) {
+        improvementChart.innerHTML = '<div class="chart-empty">Chưa có dữ liệu.</div>';
+        return;
+    }
+
+    const width = 760;
+    const height = 300;
+    const margin = {top: 28, right: 58, bottom: 54, left: 54};
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const improvements = validRows.map((row) => Number(row.improvement_percent));
+    const runtimes = validRows.map((row) => Number(row.runtime_s));
+
+    const improvementMax = Math.max(10, Math.ceil(Math.max(...improvements) / 5) * 5);
+    const runtimeMax = Math.max(1, Math.ceil(Math.max(...runtimes) * 2) / 2);
+
+    const x = (index) =>
+        margin.left + (innerWidth / Math.max(1, validRows.length - 1)) * index;
+
+    const yImprovement = (value) =>
+        margin.top + innerHeight - (Number(value) / improvementMax) * innerHeight;
+
+    const yRuntime = (value) =>
+        margin.top + innerHeight - (Number(value) / runtimeMax) * innerHeight;
+
+    const improvementPoints = validRows
+        .map((row, index) => `${x(index)},${yImprovement(row.improvement_percent)}`)
+        .join(" ");
+
+    const runtimePoints = validRows
+        .map((row, index) => `${x(index)},${yRuntime(row.runtime_s)}`)
+        .join(" ");
+
+    const pointMarkup = validRows.map((row, index) => {
+        const xPos = x(index);
+        const yImprove = yImprovement(row.improvement_percent);
+        const yRun = yRuntime(row.runtime_s);
+
+        return `
+            <circle cx="${xPos}" cy="${yImprove}" r="5" class="improvement-point" />
+            <text
+                x="${xPos}"
+                y="${yImprove - 10}"
+                text-anchor="middle"
+                class="chart-value-label chart-value-good"
+            >${Number(row.improvement_percent).toFixed(1)}%</text>
+
+            <circle cx="${xPos}" cy="${yRun}" r="5" class="runtime-point" />
+            <text
+                x="${xPos}"
+                y="${height - 23}"
+                text-anchor="middle"
+                class="chart-x-label"
+            >${row.orders} điểm</text>
+        `;
+    }).join("");
+
+    improvementChart.innerHTML = `
+        <svg
+            class="benchmark-svg"
+            viewBox="0 0 ${width} ${height}"
+            role="img"
+            aria-label="Biểu đồ tỷ lệ cải thiện và thời gian chạy"
+        >
+            <line
+                x1="${margin.left}"
+                y1="${margin.top + innerHeight}"
+                x2="${width - margin.right}"
+                y2="${margin.top + innerHeight}"
+                class="chart-axis-line"
+            />
+
+            <polyline
+                points="${improvementPoints}"
+                class="improvement-line"
+            />
+
+            <polyline
+                points="${runtimePoints}"
+                class="runtime-line"
+            />
+
+            ${pointMarkup}
+
+            <text
+                x="${margin.left - 8}"
+                y="${margin.top + 3}"
+                text-anchor="end"
+                class="chart-axis-title chart-axis-good"
+            >${improvementMax}%</text>
+
+            <text
+                x="${width - margin.right + 8}"
+                y="${margin.top + 3}"
+                class="chart-axis-title chart-axis-runtime"
+            >${runtimeMax.toFixed(1)}s</text>
+
+            <g transform="translate(${width - 270}, 12)">
+                <line x1="0" y1="5" x2="24" y2="5" class="improvement-line legend-line" />
+                <text x="31" y="9" class="chart-legend-label">Cải thiện (%)</text>
+
+                <line x1="126" y1="5" x2="150" y2="5" class="runtime-line legend-line" />
+                <text x="157" y="9" class="chart-legend-label">Runtime (s)</text>
+            </g>
+        </svg>
+    `;
+}
+
+function renderBenchmarkAnalytics(rows) {
+    const validRows = rows.filter((row) => row.status === "ok");
+
+    if (!validRows.length) {
+        benchmarkDashboard.classList.add("hidden");
+        return;
+    }
+
+    benchmarkDashboard.classList.remove("hidden");
+
+    const averageImprovement = safeAverage(
+        validRows.map((row) => row.improvement_percent)
+    );
+    const averageRuntime = safeAverage(validRows.map((row) => row.runtime_s));
+    const totalSaved = validRows.reduce(
+        (sum, row) => sum + Number(row.saved_km || 0),
+        0
+    );
+
+    const bestRow = [...validRows].sort(
+        (a, b) =>
+            Number(b.improvement_percent) - Number(a.improvement_percent)
+    )[0];
+
+    const allOsrm = validRows.every((row) => !row.is_fallback);
+    dashboardSource.textContent = allOsrm
+        ? "100% OSRM đường bộ"
+        : "Có dữ liệu fallback";
+
+    benchmarkKpis.innerHTML = `
+        <article class="benchmark-kpi">
+            <span>Cải thiện trung bình</span>
+            <strong>${averageImprovement?.toFixed(2) ?? "—"}%</strong>
+            <small>so với Greedy baseline</small>
+        </article>
+
+        <article class="benchmark-kpi">
+            <span>Tổng quãng đường giảm</span>
+            <strong>${totalSaved.toFixed(2)} km</strong>
+            <small>trên ${validRows.length} bộ thực nghiệm</small>
+        </article>
+
+        <article class="benchmark-kpi">
+            <span>Kịch bản cải thiện tốt nhất</span>
+            <strong>${bestRow ? `${Number(bestRow.improvement_percent).toFixed(2)}%` : "—"}</strong>
+            <small>${bestRow ? `${bestRow.orders} điểm / ${bestRow.vehicles} xe` : ""}</small>
+        </article>
+
+        <article class="benchmark-kpi">
+            <span>Runtime trung bình</span>
+            <strong>${averageRuntime?.toFixed(2) ?? "—"} s</strong>
+            <small>thời gian benchmark phía server</small>
+        </article>
+    `;
+
+    createDistanceChart(validRows);
+    createImprovementChart(validRows);
+
+    const smallest = validRows[0];
+    const largest = validRows[validRows.length - 1];
+
+    benchmarkObservation.innerHTML = `
+        <strong>Nhận xét tự động từ số liệu:</strong>
+        CVRP/OR-Tools tạo tổng quãng đường thấp hơn Greedy baseline ở
+        <strong>${validRows.filter((row) => Number(row.improvement_percent) > 0).length}/${validRows.length}</strong>
+        bộ dữ liệu. Mức cải thiện trung bình đạt
+        <strong>${averageImprovement?.toFixed(2) ?? "—"}%</strong>.
+        Khi quy mô tăng từ ${smallest.orders} lên ${largest.orders} điểm giao,
+        runtime benchmark thay đổi từ
+        <strong>${Number(smallest.runtime_s).toFixed(2)} s</strong>
+        lên
+        <strong>${Number(largest.runtime_s).toFixed(2)} s</strong>.
+        ${
+            allOsrm
+                ? "Toàn bộ số liệu trong bảng được tạo từ ma trận khoảng cách đường bộ OSRM."
+                : "Một số kịch bản đã sử dụng khoảng cách dự phòng Haversine và cần được ghi chú khi đưa vào báo cáo."
+        }
+    `;
+}
+
 function renderBenchmarkRows(rows) {
     lastBenchmarkRows = rows;
     exportBenchmarkBtn.disabled = !rows.length;
@@ -777,15 +1138,19 @@ function renderBenchmarkRows(rows) {
                 <td>${formatBenchmarkNumber(row.baseline_km)} km</td>
                 <td><strong>${formatBenchmarkNumber(row.cvrp_km)} km</strong></td>
                 <td class="${improvementClass}">
-                    ${improvement >= 0
-    			? `Giảm ${Math.abs(improvement).toFixed(2)}%`
-    			: `Tăng ${Math.abs(improvement).toFixed(2)}%`}
+                    ${
+                        improvement >= 0
+                            ? `Giảm ${Math.abs(improvement).toFixed(2)}%`
+                            : `Tăng ${Math.abs(improvement).toFixed(2)}%`
+                    }
                 </td>
                 <td>${formatBenchmarkNumber(row.runtime_s)} s</td>
                 <td>${source}</td>
             </tr>
         `;
     }).join("");
+
+    renderBenchmarkAnalytics(rows);
 }
 
 async function runBenchmark() {
@@ -934,6 +1299,8 @@ function exportBenchmarkCsv() {
 
     setExperimentMessage("Đã xuất bảng thực nghiệm thành CSV.", "success");
 }
+
+
 
 runBenchmarkBtn.addEventListener("click", runBenchmark);
 runTestsBtn.addEventListener("click", runSelfTests);

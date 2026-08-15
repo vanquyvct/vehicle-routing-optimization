@@ -227,6 +227,42 @@
                         </table>
                     </div>
 
+                    <section id="benchmark-dashboard" class="benchmark-dashboard hidden">
+                        <div class="dashboard-heading">
+                            <div>
+                                <p class="section-kicker">TỔNG HỢP KẾT QUẢ</p>
+                                <h3>Phân tích thực nghiệm</h3>
+                            </div>
+                            <span id="dashboard-source" class="dashboard-source"></span>
+                        </div>
+
+                        <div id="benchmark-kpis" class="benchmark-kpis"></div>
+
+                        <div class="chart-grid">
+                            <article class="chart-card">
+                                <div class="chart-card-heading">
+                                    <div>
+                                        <strong>So sánh tổng quãng đường</strong>
+                                        <span>Greedy baseline và CVRP/OR-Tools</span>
+                                    </div>
+                                </div>
+                                <div id="distance-chart" class="chart-host"></div>
+                            </article>
+
+                            <article class="chart-card">
+                                <div class="chart-card-heading">
+                                    <div>
+                                        <strong>Tỷ lệ cải thiện và thời gian chạy</strong>
+                                        <span>Khả năng tối ưu khi tăng quy mô dữ liệu</span>
+                                    </div>
+                                </div>
+                                <div id="improvement-chart" class="chart-host"></div>
+                            </article>
+                        </div>
+
+                        <div id="benchmark-observation" class="benchmark-observation"></div>
+                    </section>
+
                     <div id="test-results" class="test-results"></div>
                 </section>
             </section>
