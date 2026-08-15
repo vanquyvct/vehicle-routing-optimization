@@ -101,6 +101,23 @@
                     Khôi phục dữ liệu mẫu
                 </button>
 
+                <div class="data-tools">
+                    <button id="save-data-btn" class="tool-button" type="button">
+                        Lưu dữ liệu
+                    </button>
+                    <button id="load-data-btn" class="tool-button" type="button">
+                        Tải dữ liệu đã lưu
+                    </button>
+                    <button id="export-data-btn" class="tool-button" type="button">
+                        Xuất JSON
+                    </button>
+                    <button id="import-data-btn" class="tool-button" type="button">
+                        Nhập JSON
+                    </button>
+                </div>
+
+                <input id="import-file-input" type="file" accept=".json,application/json" hidden>
+
                 <div id="message" class="message hidden"></div>
             </section>
         </aside>
@@ -141,6 +158,27 @@
                 </div>
 
                 <div id="route-results" class="route-results"></div>
+
+                <section id="comparison-panel" class="comparison-panel hidden">
+                    <div class="comparison-heading">
+                        <div>
+                            <p class="section-kicker">ĐÁNH GIÁ</p>
+                            <h3>So sánh với phương pháp cơ sở</h3>
+                        </div>
+                        <span id="improvement-badge" class="improvement-badge"></span>
+                    </div>
+
+                    <p class="comparison-description">
+                        Baseline sử dụng chiến lược tham lam: mỗi xe lần lượt chọn điểm chưa giao gần nhất mà vẫn còn đủ tải. Hai phương pháp được so sánh trên cùng quãng đường đường bộ hiển thị.
+                    </p>
+
+                    <div id="comparison-summary" class="comparison-summary"></div>
+
+                    <details class="baseline-details">
+                        <summary>Xem tuyến của phương pháp cơ sở</summary>
+                        <div id="baseline-routes" class="baseline-routes"></div>
+                    </details>
+                </section>
             </section>
         </main>
     </div>

@@ -16,12 +16,23 @@ const addOrderModeBtn = document.getElementById("add-order-mode-btn");
 const pickDepotBtn = document.getElementById("pick-depot-btn");
 const optimizeBtn = document.getElementById("optimize-btn");
 const resetBtn = document.getElementById("reset-btn");
+const saveDataBtn = document.getElementById("save-data-btn");
+const loadDataBtn = document.getElementById("load-data-btn");
+const exportDataBtn = document.getElementById("export-data-btn");
+const importDataBtn = document.getElementById("import-data-btn");
+const importFileInput = document.getElementById("import-file-input");
 
 const messageEl = document.getElementById("message");
 const statusBadge = document.getElementById("status-badge");
 const resultSummary = document.getElementById("result-summary");
 const routeResults = document.getElementById("route-results");
 const mapModeEl = document.getElementById("map-mode");
+const comparisonPanel = document.getElementById("comparison-panel");
+const comparisonSummary = document.getElementById("comparison-summary");
+const improvementBadge = document.getElementById("improvement-badge");
+const baselineRoutes = document.getElementById("baseline-routes");
+
+const STORAGE_KEY = "vehicle-routing-tttn-dataset-v1";
 
 const map = L.map("map", {
     zoomControl: true,
@@ -227,6 +238,11 @@ function clearResult() {
     resultSummary.className = "result-summary empty";
     resultSummary.textContent = "Nhấn “Tối ưu tuyến” để hệ thống tính phương án.";
     routeResults.innerHTML = "";
+    comparisonPanel.classList.add("hidden");
+    comparisonSummary.innerHTML = "";
+    baselineRoutes.innerHTML = "";
+    improvementBadge.textContent = "";
+    improvementBadge.className = "improvement-badge";
 }
 
 function renderInputMarkers(fit = false) {
@@ -383,21 +399,175 @@ function renderRoutes(result) {
     }
 }
 
-function loadSample() {
-    depotNameInput.value = defaultSample.depot.name ?? "Kho trung tâm";
-    depotLatInput.value = defaultSample.depot.lat;
-    depotLngInput.value = defaultSample.depot.lng;
+
+function populateForm(payload, fit = true) {
+    if (!payload || !payload.depot || !Array.isArray(payload.vehicles) || !Array.isArray(payload.orders)) {
+        throw new Error("File dữ liệu không đúng cấu trúc của hệ thống.");
+    }
+
+    depotNameInput.value = payload.depot.name ?? "Kho trung tâm";
+    depotLatInput.value = payload.depot.lat;
+    depotLngInput.value = payload.depot.lng;
 
     vehicleList.innerHTML = "";
-    defaultSample.vehicles.forEach((vehicle) => addVehicleRow(vehicle));
+    payload.vehicles.forEach((vehicle) => addVehicleRow(vehicle));
 
     orderList.innerHTML = "";
-    defaultSample.orders.forEach((order) => addOrderRow(order));
+    payload.orders.forEach((order) => addOrderRow(order));
 
-    hideMessage();
     setMapMode(null);
     clearResult();
-    renderInputMarkers(true);
+    renderInputMarkers(fit);
+}
+
+function saveDataset() {
+    try {
+        const payload = collectPayload();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        showMessage("Đã lưu bộ dữ liệu hiện tại trên trình duyệt.", "success");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function loadSavedDataset() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+
+    if (!raw) {
+        showMessage("Chưa có bộ dữ liệu nào được lưu trên trình duyệt.", "warning");
+        return;
+    }
+
+    try {
+        const payload = JSON.parse(raw);
+        populateForm(payload, true);
+        showMessage("Đã tải lại bộ dữ liệu đã lưu.", "success");
+    } catch (error) {
+        showMessage(`Không đọc được dữ liệu đã lưu: ${error.message}`);
+    }
+}
+
+function exportDataset() {
+    try {
+        const payload = collectPayload();
+        const blob = new Blob(
+            [JSON.stringify(payload, null, 2)],
+            {type: "application/json"}
+        );
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = `vehicle-routing-data-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+
+        showMessage("Đã xuất dữ liệu thành file JSON.", "success");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function importDataset(file) {
+    if (!file) {
+        return;
+    }
+
+    try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        populateForm(payload, true);
+        showMessage(`Đã nhập dữ liệu từ ${file.name}.`, "success");
+    } catch (error) {
+        showMessage(`Không nhập được file JSON: ${error.message}`);
+    } finally {
+        importFileInput.value = "";
+    }
+}
+
+function renderComparison(comparison) {
+    if (!comparison) {
+        comparisonPanel.classList.add("hidden");
+        return;
+    }
+
+    comparisonPanel.classList.remove("hidden");
+
+    const improvement = Number(comparison.improvement_percent);
+    const savedKm = Number(comparison.distance_saved_km);
+
+    improvementBadge.textContent = (
+        improvement >= 0
+            ? `Giảm ${improvement.toFixed(2)}%`
+            : `Tăng ${Math.abs(improvement).toFixed(2)}%`
+    );
+    improvementBadge.className = (
+        improvement >= 0
+            ? "improvement-badge positive"
+            : "improvement-badge negative"
+    );
+
+    comparisonSummary.innerHTML = `
+        <div class="comparison-card baseline-card">
+            <span>Greedy baseline</span>
+            <strong>${comparison.baseline_total_distance_km.toFixed(2)} km</strong>
+            ${
+                comparison.baseline_total_duration_min !== null
+                    ? `<small>≈ ${comparison.baseline_total_duration_min.toFixed(1)} phút</small>`
+                    : ""
+            }
+        </div>
+
+        <div class="comparison-card optimized-card">
+            <span>CVRP / OR-Tools</span>
+            <strong>${comparison.optimized_total_distance_km.toFixed(2)} km</strong>
+            ${
+                comparison.optimized_total_duration_min !== null
+                    ? `<small>≈ ${comparison.optimized_total_duration_min.toFixed(1)} phút</small>`
+                    : ""
+            }
+        </div>
+
+        <div class="comparison-card saving-card">
+            <span>Chênh lệch quãng đường</span>
+            <strong>${savedKm >= 0 ? "−" : "+"}${Math.abs(savedKm).toFixed(2)} km</strong>
+            <small>${improvement >= 0 ? "CVRP ngắn hơn baseline" : "Baseline ngắn hơn ở bộ dữ liệu này"}</small>
+        </div>
+    `;
+
+    baselineRoutes.innerHTML = comparison.baseline_routes
+        .filter((route) => route.orders.length > 0)
+        .map((route) => {
+            const numberedStops = route.orders
+                .map((orderId, index) => `${index + 1}. ${orderId}`)
+                .join(" → ");
+
+            return `
+                <div class="baseline-route">
+                    <div class="baseline-route-top">
+                        <strong>${route.vehicle_id}</strong>
+                        <span>${route.load}/${route.capacity}</span>
+                    </div>
+                    <p>Kho${numberedStops ? ` → ${numberedStops}` : ""} → Kho</p>
+                    <small>
+                        ${route.distance_km.toFixed(2)} km
+                        ${
+                            route.duration_min !== null
+                                ? ` · ≈ ${route.duration_min.toFixed(1)} phút`
+                                : ""
+                        }
+                    </small>
+                </div>
+            `;
+        })
+        .join("");
+}
+
+function loadSample() {
+    hideMessage();
+    populateForm(defaultSample, true);
 }
 
 addVehicleBtn.addEventListener("click", () => {
@@ -447,6 +617,13 @@ map.on("click", (event) => {
 });
 
 resetBtn.addEventListener("click", loadSample);
+saveDataBtn.addEventListener("click", saveDataset);
+loadDataBtn.addEventListener("click", loadSavedDataset);
+exportDataBtn.addEventListener("click", exportDataset);
+importDataBtn.addEventListener("click", () => importFileInput.click());
+importFileInput.addEventListener("change", () => {
+    importDataset(importFileInput.files?.[0]);
+});
 
 optimizeBtn.addEventListener("click", async () => {
     hideMessage();
@@ -516,6 +693,7 @@ optimizeBtn.addEventListener("click", async () => {
         `;
 
         renderRoutes(result);
+        renderComparison(result.comparison);
 
         if (result.is_fallback) {
             showMessage(
