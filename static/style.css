@@ -714,3 +714,221 @@ input:focus {
         grid-template-columns: 1fr;
     }
 }
+
+
+.experiment-panel {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid #e3e8ef;
+}
+
+.experiment-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.experiment-heading h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.experiment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.small-action-button {
+    border: 1px solid #d9e0ea;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    color: #566376;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.small-action-button.primary-small {
+    border-color: #4263eb;
+    background: #4263eb;
+    color: #fff;
+}
+
+.small-action-button:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.experiment-description {
+    max-width: 850px;
+    margin: 8px 0 12px;
+    color: #778293;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.experiment-message {
+    margin-bottom: 10px;
+    padding: 9px 11px;
+    border-radius: 9px;
+    background: #eef2f6;
+    color: #5b6677;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.experiment-message.success {
+    background: #eaf8ef;
+    color: #18794e;
+}
+
+.experiment-message.warning,
+.experiment-message.running {
+    background: #fff5db;
+    color: #8a6100;
+}
+
+.experiment-message.error {
+    background: #fff0ef;
+    color: #b42318;
+}
+
+.experiment-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e2e7ef;
+    border-radius: 11px;
+}
+
+.experiment-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 11px;
+}
+
+.experiment-table th,
+.experiment-table td {
+    padding: 10px 11px;
+    border-bottom: 1px solid #edf0f4;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.experiment-table th {
+    background: #f6f8fb;
+    color: #687487;
+    font-size: 10px;
+    letter-spacing: .03em;
+}
+
+.experiment-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.experiment-table td:first-child strong,
+.experiment-table td:first-child small {
+    display: block;
+}
+
+.experiment-table td:first-child small {
+    margin-top: 2px;
+    color: #8a94a3;
+}
+
+.placeholder-row td {
+    color: #8c96a5;
+    text-align: center;
+}
+
+.benchmark-error-row td {
+    color: #b42318;
+    background: #fff7f6;
+}
+
+.metric-good {
+    color: #16794d;
+    font-weight: 900;
+}
+
+.metric-bad {
+    color: #b42318;
+    font-weight: 900;
+}
+
+.test-results {
+    margin-top: 12px;
+}
+
+.test-summary {
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.test-summary.pass {
+    background: #e6f7ed;
+    color: #16794d;
+}
+
+.test-summary.fail {
+    background: #fff0ef;
+    color: #b42318;
+}
+
+.test-case-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 8px;
+}
+
+.test-case {
+    padding: 10px;
+    border: 1px solid #e1e6ee;
+    border-radius: 9px;
+    background: #fbfcfe;
+}
+
+.test-case > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+}
+
+.test-case > div span {
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.test-case.pass > div span {
+    color: #16794d;
+}
+
+.test-case.fail > div span {
+    color: #b42318;
+}
+
+.test-case p {
+    margin: 6px 0 0;
+    color: #798494;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+@media (max-width: 780px) {
+    .experiment-heading {
+        display: block;
+    }
+
+    .experiment-actions {
+        justify-content: flex-start;
+        margin-top: 10px;
+    }
+}

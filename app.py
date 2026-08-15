@@ -4,6 +4,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 
+from benchmark import run_benchmarks, run_validation_tests
 from optimizer import optimize_cvrp
 
 
@@ -39,6 +40,40 @@ def optimize():
                 "message": f"Lỗi hệ thống: {type(exc).__name__}: {exc}",
             }
         ), 500
+
+
+@app.post("/api/benchmark")
+def benchmark():
+    try:
+        return jsonify(
+            {
+                "status": "ok",
+                "results": run_benchmarks(),
+            }
+        )
+    except Exception as exc:
+        app.logger.exception("Benchmark error")
+        return jsonify(
+            {
+                "status": "error",
+                "message": f"Lỗi khi chạy thực nghiệm: {type(exc).__name__}: {exc}",
+            }
+        ), 500
+
+
+@app.get("/api/self-test")
+def self_test():
+    results = run_validation_tests()
+    passed = sum(1 for item in results if item["passed"])
+
+    return jsonify(
+        {
+            "status": "ok",
+            "passed": passed,
+            "total": len(results),
+            "results": results,
+        }
+    )
 
 
 if __name__ == "__main__":

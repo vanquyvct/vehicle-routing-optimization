@@ -358,7 +358,11 @@ def _refresh_baseline_with_road_geometry(
 
     return baseline, warning
 
-def optimize_cvrp(payload: dict[str, Any]) -> dict[str, Any]:
+def optimize_cvrp(
+    payload: dict[str, Any],
+    include_geometry: bool = True,
+    solver_time_limit_s: int = 3,
+) -> dict[str, Any]:
     """
     Giải CVRP với ưu tiên khoảng cách đường bộ thực tế.
 
@@ -366,7 +370,7 @@ def optimize_cvrp(payload: dict[str, Any]) -> dict[str, Any]:
     1. OSRM Table service -> ma trận khoảng cách/thời gian đường bộ.
     2. Tạo baseline greedy để có mốc so sánh.
     3. OR-Tools -> tối ưu phân công và thứ tự điểm.
-    4. OSRM Route service -> geometry tuyến để vẽ trên Leaflet.
+    4. Khi include_geometry=True, OSRM Route service trả geometry để vẽ trên Leaflet.
 
     Nếu OSRM tạm thời không truy cập được, hệ thống hạ cấp về Haversine.
     """
@@ -416,7 +420,7 @@ def optimize_cvrp(payload: dict[str, Any]) -> dict[str, Any]:
         durations_s=durations_s,
     )
 
-    if baseline and not is_fallback:
+    if baseline and not is_fallback and include_geometry:
         baseline, baseline_warning = _refresh_baseline_with_road_geometry(baseline)
         if baseline_warning and not routing_warning:
             routing_warning = baseline_warning
@@ -460,7 +464,7 @@ def optimize_cvrp(payload: dict[str, Any]) -> dict[str, Any]:
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
-    search_parameters.time_limit.seconds = 3
+    search_parameters.time_limit.seconds = max(1, int(solver_time_limit_s))
 
     solution = routing.SolveWithParameters(search_parameters)
 
@@ -520,7 +524,7 @@ def optimize_cvrp(payload: dict[str, Any]) -> dict[str, Any]:
             for point in route_points
         ]
 
-        if route_order_ids and not is_fallback:
+        if route_order_ids and not is_fallback and include_geometry:
             try:
                 geometry_result = get_route_geometry(route_points)
                 if geometry_result.coordinates:

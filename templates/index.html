@@ -179,6 +179,56 @@
                         <div id="baseline-routes" class="baseline-routes"></div>
                     </details>
                 </section>
+
+                <section class="experiment-panel">
+                    <div class="experiment-heading">
+                        <div>
+                            <p class="section-kicker">THỰC NGHIỆM</p>
+                            <h3>Kiểm thử và đánh giá nhiều bộ dữ liệu</h3>
+                        </div>
+
+                        <div class="experiment-actions">
+                            <button id="run-tests-btn" class="small-action-button" type="button">
+                                Kiểm thử đầu vào
+                            </button>
+                            <button id="run-benchmark-btn" class="small-action-button primary-small" type="button">
+                                Chạy 10 / 20 / 30 điểm
+                            </button>
+                            <button id="export-benchmark-btn" class="small-action-button" type="button" disabled>
+                                Xuất CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="experiment-description">
+                        Bộ thực nghiệm dùng dữ liệu cố định để có thể chạy lặp lại. Mỗi kịch bản so sánh Greedy baseline với CVRP/OR-Tools trên cùng ma trận khoảng cách.
+                    </p>
+
+                    <div id="experiment-message" class="experiment-message hidden"></div>
+
+                    <div class="experiment-table-wrap">
+                        <table class="experiment-table">
+                            <thead>
+                                <tr>
+                                    <th>Bộ dữ liệu</th>
+                                    <th>Xe</th>
+                                    <th>Baseline</th>
+                                    <th>CVRP</th>
+                                    <th>Cải thiện</th>
+                                    <th>Runtime</th>
+                                    <th>Nguồn</th>
+                                </tr>
+                            </thead>
+                            <tbody id="benchmark-table-body">
+                                <tr class="placeholder-row">
+                                    <td colspan="7">Chưa chạy thực nghiệm.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="test-results" class="test-results"></div>
+                </section>
             </section>
         </main>
     </div>

@@ -34,6 +34,15 @@ const baselineRoutes = document.getElementById("baseline-routes");
 
 const STORAGE_KEY = "vehicle-routing-tttn-dataset-v1";
 
+const runTestsBtn = document.getElementById("run-tests-btn");
+const runBenchmarkBtn = document.getElementById("run-benchmark-btn");
+const exportBenchmarkBtn = document.getElementById("export-benchmark-btn");
+const benchmarkTableBody = document.getElementById("benchmark-table-body");
+const experimentMessage = document.getElementById("experiment-message");
+const testResults = document.getElementById("test-results");
+
+let lastBenchmarkRows = [];
+
 const map = L.map("map", {
     zoomControl: true,
 }).setView([21.0285, 105.8542], 13);
@@ -720,5 +729,215 @@ optimizeBtn.addEventListener("click", async () => {
         optimizeBtn.textContent = "Tối ưu tuyến";
     }
 });
+
+
+function setExperimentMessage(text, type = "") {
+    experimentMessage.textContent = text;
+    experimentMessage.className = `experiment-message ${type}`.trim();
+}
+
+function clearExperimentMessage() {
+    experimentMessage.textContent = "";
+    experimentMessage.className = "experiment-message hidden";
+}
+
+function formatBenchmarkNumber(value, digits = 2) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "—";
+    }
+    return Number(value).toFixed(digits);
+}
+
+function renderBenchmarkRows(rows) {
+    lastBenchmarkRows = rows;
+    exportBenchmarkBtn.disabled = !rows.length;
+
+    benchmarkTableBody.innerHTML = rows.map((row) => {
+        if (row.status !== "ok") {
+            return `
+                <tr class="benchmark-error-row">
+                    <td>${row.scenario_name}</td>
+                    <td>${row.vehicles}</td>
+                    <td colspan="5">${row.message || "Không chạy được."}</td>
+                </tr>
+            `;
+        }
+
+        const source = row.is_fallback ? "Haversine" : "OSRM";
+        const improvement = Number(row.improvement_percent);
+        const improvementClass = improvement >= 0 ? "metric-good" : "metric-bad";
+
+        return `
+            <tr>
+                <td>
+                    <strong>${row.scenario_name}</strong>
+                    <small>${row.orders} đơn</small>
+                </td>
+                <td>${row.vehicles}</td>
+                <td>${formatBenchmarkNumber(row.baseline_km)} km</td>
+                <td><strong>${formatBenchmarkNumber(row.cvrp_km)} km</strong></td>
+                <td class="${improvementClass}">
+                    ${improvement >= 0
+    			? `Giảm ${Math.abs(improvement).toFixed(2)}%`
+    			: `Tăng ${Math.abs(improvement).toFixed(2)}%`}
+                </td>
+                <td>${formatBenchmarkNumber(row.runtime_s)} s</td>
+                <td>${source}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+async function runBenchmark() {
+    clearExperimentMessage();
+    testResults.innerHTML = "";
+
+    runBenchmarkBtn.disabled = true;
+    runTestsBtn.disabled = true;
+    exportBenchmarkBtn.disabled = true;
+    runBenchmarkBtn.textContent = "Đang chạy...";
+    setExperimentMessage(
+        "Đang chạy lần lượt các bộ 10, 20 và 30 điểm. Có thể mất một lúc do cần lấy ma trận đường bộ và giải CVRP.",
+        "running"
+    );
+
+    try {
+        const response = await fetch("/api/benchmark", {
+            method: "POST",
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || "Không chạy được thực nghiệm.");
+        }
+
+        renderBenchmarkRows(result.results);
+
+        const okRows = result.results.filter((row) => row.status === "ok");
+        const fallbackRows = okRows.filter((row) => row.is_fallback);
+
+        if (fallbackRows.length) {
+            setExperimentMessage(
+                `Hoàn thành ${okRows.length}/${result.results.length} bộ. Có ${fallbackRows.length} bộ dùng Haversine dự phòng do dịch vụ routing không khả dụng.`,
+                "warning"
+            );
+        } else {
+            setExperimentMessage(
+                `Hoàn thành ${okRows.length}/${result.results.length} bộ thực nghiệm bằng khoảng cách đường bộ.`,
+                "success"
+            );
+        }
+    } catch (error) {
+        setExperimentMessage(error.message, "error");
+    } finally {
+        runBenchmarkBtn.disabled = false;
+        runTestsBtn.disabled = false;
+        runBenchmarkBtn.textContent = "Chạy 10 / 20 / 30 điểm";
+        exportBenchmarkBtn.disabled = !lastBenchmarkRows.length;
+    }
+}
+
+async function runSelfTests() {
+    clearExperimentMessage();
+    runTestsBtn.disabled = true;
+    runBenchmarkBtn.disabled = true;
+    runTestsBtn.textContent = "Đang kiểm thử...";
+
+    try {
+        const response = await fetch("/api/self-test");
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || "Không chạy được bộ kiểm thử.");
+        }
+
+        testResults.innerHTML = `
+            <div class="test-summary ${result.passed === result.total ? "pass" : "fail"}">
+                ${result.passed}/${result.total} test đạt
+            </div>
+
+            <div class="test-case-grid">
+                ${result.results.map((item) => `
+                    <article class="test-case ${item.passed ? "pass" : "fail"}">
+                        <div>
+                            <strong>${item.name}</strong>
+                            <span>${item.passed ? "PASS" : "FAIL"}</span>
+                        </div>
+                        <p>${item.message}</p>
+                    </article>
+                `).join("")}
+            </div>
+        `;
+
+        setExperimentMessage(
+            result.passed === result.total
+                ? "Toàn bộ kiểm thử dữ liệu đầu vào đều đạt."
+                : "Có test chưa đạt; cần kiểm tra lại validation.",
+            result.passed === result.total ? "success" : "error"
+        );
+    } catch (error) {
+        setExperimentMessage(error.message, "error");
+    } finally {
+        runTestsBtn.disabled = false;
+        runBenchmarkBtn.disabled = false;
+        runTestsBtn.textContent = "Kiểm thử đầu vào";
+    }
+}
+
+function exportBenchmarkCsv() {
+    if (!lastBenchmarkRows.length) {
+        return;
+    }
+
+    const headers = [
+        "scenario",
+        "orders",
+        "vehicles",
+        "baseline_km",
+        "cvrp_km",
+        "saved_km",
+        "improvement_percent",
+        "runtime_s",
+        "routing_source",
+        "status",
+    ];
+
+    const lines = [
+        headers.join(","),
+        ...lastBenchmarkRows.map((row) => [
+            row.scenario_id,
+            row.orders,
+            row.vehicles,
+            row.baseline_km ?? "",
+            row.cvrp_km ?? "",
+            row.saved_km ?? "",
+            row.improvement_percent ?? "",
+            row.runtime_s ?? "",
+            `"${String(row.routing_source ?? "").replaceAll('"', '""')}"`,
+            row.status,
+        ].join(",")),
+    ];
+
+    const blob = new Blob(
+        ["\uFEFF" + lines.join("\n")],
+        {type: "text/csv;charset=utf-8"}
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = `benchmark-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+
+    setExperimentMessage("Đã xuất bảng thực nghiệm thành CSV.", "success");
+}
+
+runBenchmarkBtn.addEventListener("click", runBenchmark);
+runTestsBtn.addEventListener("click", runSelfTests);
+exportBenchmarkBtn.addEventListener("click", exportBenchmarkCsv);
+
 
 loadSample();
