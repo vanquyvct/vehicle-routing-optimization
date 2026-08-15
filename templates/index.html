@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Routing - TTTN</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <section class="hero">
+            <p class="eyebrow">THỰC TẬP TỐT NGHIỆP</p>
+            <h1>Hệ thống điều phối phương tiện và tối ưu tuyến giao hàng</h1>
+            <p class="subtitle">
+                Phiên bản đầu: nhập dữ liệu JSON và giải bài toán CVRP bằng Google OR-Tools.
+            </p>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <p class="label">INPUT</p>
+                        <h2>Dữ liệu bài toán</h2>
+                    </div>
+                    <button id="reset-btn" class="secondary">Khôi phục mẫu</button>
+                </div>
+
+                <textarea id="payload">{{ sample_json }}</textarea>
+
+                <button id="optimize-btn" class="primary">
+                    Chạy tối ưu tuyến
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <p class="label">OUTPUT</p>
+                        <h2>Kết quả</h2>
+                    </div>
+                    <span id="status" class="status">Chưa chạy</span>
+                </div>
+
+                <div id="summary" class="summary empty">
+                    Nhấn “Chạy tối ưu tuyến” để bắt đầu.
+                </div>
+
+                <div id="routes"></div>
+
+                <details>
+                    <summary>Xem JSON kết quả</summary>
+                    <pre id="raw-output"></pre>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        window.DEFAULT_SAMPLE = {{ sample_json | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

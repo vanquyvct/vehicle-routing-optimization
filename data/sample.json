@@ -1,0 +1,49 @@
+{
+  "depot": {
+    "name": "Kho trung tâm",
+    "lat": 21.0285,
+    "lng": 105.8542
+  },
+  "vehicles": [
+    {
+      "id": "XE01",
+      "capacity": 15
+    },
+    {
+      "id": "XE02",
+      "capacity": 15
+    }
+  ],
+  "orders": [
+    {
+      "id": "DH01",
+      "lat": 21.032,
+      "lng": 105.848,
+      "demand": 4
+    },
+    {
+      "id": "DH02",
+      "lat": 21.021,
+      "lng": 105.861,
+      "demand": 6
+    },
+    {
+      "id": "DH03",
+      "lat": 21.036,
+      "lng": 105.865,
+      "demand": 5
+    },
+    {
+      "id": "DH04",
+      "lat": 21.017,
+      "lng": 105.849,
+      "demand": 3
+    },
+    {
+      "id": "DH05",
+      "lat": 21.026,
+      "lng": 105.872,
+      "demand": 4
+    }
+  ]
+}
