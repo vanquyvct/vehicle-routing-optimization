@@ -1,6 +1,6 @@
 # Hệ thống điều phối phương tiện và tối ưu tuyến giao hàng
 
-Ứng dụng web hỗ trợ phân chia điểm giao cho nhiều phương tiện và xác định thứ tự ghé điểm phù hợp dưới ràng buộc sức chứa. Hệ thống sử dụng Google OR-Tools để giải bài toán CVRP và OSRM/OpenStreetMap để tính khoảng cách, thời gian và hình học tuyến theo mạng đường bộ.
+Ứng dụng web thử nghiệm hỗ trợ phân chia điểm giao cho nhiều phương tiện và xác định thứ tự ghé điểm phù hợp dưới ràng buộc sức chứa. Hệ thống sử dụng Google OR-Tools để giải bài toán CVRP và OSRM/OpenStreetMap để tính khoảng cách, thời gian và hình học tuyến theo mạng đường bộ.
 
 ## Mục tiêu
 
@@ -12,6 +12,23 @@ Hệ thống hướng tới bài toán:
 - mỗi điểm giao được phục vụ một lần;
 - tải của từng xe không vượt quá sức chứa;
 - tổng quãng đường của phương án được giảm tối đa trong phạm vi mô hình.
+
+
+## Trạng thái dự án
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Mô hình CVRP và ràng buộc sức chứa | Hoàn thành |
+| Tối ưu bằng Google OR-Tools | Hoàn thành |
+| Ma trận khoảng cách đường bộ OSRM | Hoàn thành |
+| Vẽ tuyến trên Leaflet/OpenStreetMap | Hoàn thành |
+| Đánh số thứ tự điểm giao | Hoàn thành |
+| Greedy baseline để so sánh | Hoàn thành |
+| Validation đầu vào | Hoàn thành |
+| Benchmark 10/20/30 điểm | Hoàn thành |
+| Dashboard và biểu đồ thực nghiệm | Hoàn thành |
+| Import/export dữ liệu | Hoàn thành |
+| Time Windows / giao thông realtime / GPS | Chưa triển khai |
 
 ## Chức năng chính
 
@@ -32,24 +49,36 @@ Hệ thống hướng tới bài toán:
 - Xuất kết quả benchmark thành CSV.
 - Hiển thị KPI và biểu đồ thực nghiệm.
 
+
+## Giao diện
+
+### Kết quả tối ưu và tuyến đường
+
+![Kết quả tối ưu tuyến](docs/images/route-result.png)
+
+### Dashboard thực nghiệm
+
+![Dashboard thực nghiệm](docs/images/benchmark-dashboard.png)
+
 ## Kiến trúc
 
 ```mermaid
-flowchart LR
+flowchart TD
     U[Người điều phối] --> UI[Web UI]
+
     UI --> MAP[Leaflet + OpenStreetMap]
     UI --> API[Flask REST API]
 
-    API --> OPT[CVRP Optimizer]
-    OPT --> ORT[Google OR-Tools]
-    OPT --> OSRM[OSRM Routing Service]
+    API --> VAL[Kiểm tra dữ liệu]
+    VAL --> OPT[CVRP Optimizer]
 
-    OSRM --> DM[Distance Matrix]
-    DM --> ORT
+    OPT --> TABLE[OSRM Table Service]
+    TABLE --> MATRIX[Distance / Duration Matrix]
+    MATRIX --> ORT[Google OR-Tools]
 
-    ORT --> ROUTE[Phương án phân công và thứ tự điểm]
-    ROUTE --> OSRM
-    OSRM --> GEO[Road Geometry + Distance + Duration]
+    ORT --> PLAN[Phân công xe + thứ tự điểm]
+    PLAN --> ROUTE[OSRM Route Service]
+    ROUTE --> GEO[Road Geometry + Distance + Duration]
 
     GEO --> API
     API --> UI
@@ -101,6 +130,12 @@ Improvement (%) =
 
 Các kết quả trên được tạo từ bộ benchmark cố định của ứng dụng và sử dụng khoảng cách đường bộ OSRM.
 
+
+> **Lưu ý:** Các số liệu benchmark chỉ phản ánh ba bộ dữ liệu thử nghiệm cố định
+> của phiên bản hiện tại. Kết quả này không được hiểu là CVRP/OR-Tools luôn cải
+> thiện đúng mức trên với mọi bộ dữ liệu hoặc mọi hệ thống logistics.
+
+
 ## Công nghệ
 
 ### Backend
@@ -147,6 +182,23 @@ vehicle-routing-optimization/
     ├── testing.md
     └── project_scope.md
 ```
+
+
+## Demo nhanh
+
+Sau khi chạy `python app.py` và mở `http://127.0.0.1:5000`:
+
+1. Kiểm tra hoặc thay đổi kho.
+2. Thêm/xóa phương tiện và đặt sức chứa.
+3. Thêm điểm giao bằng tọa độ hoặc click trực tiếp trên bản đồ.
+4. Nhấn **Tối ưu tuyến**.
+5. Quan sát:
+   - xe nào nhận đơn nào;
+   - thứ tự điểm giao;
+   - tải từng xe;
+   - quãng đường và thời gian ước tính;
+   - tuyến đường thực tế trên bản đồ.
+6. Chạy benchmark 10/20/30 điểm nếu cần xem phần đánh giá thuật toán.
 
 ## Cài đặt
 

@@ -10,38 +10,28 @@ Hệ thống được chia thành bốn thành phần chính:
 4. Dịch vụ định tuyến OSRM.
 
 ```mermaid
-flowchart TB
-    subgraph Client
-        UI[HTML/CSS/JavaScript]
-        L[Leaflet]
-    end
+flowchart TD
+    U[Người điều phối] --> UI[Web UI]
 
-    subgraph Backend
-        F[Flask]
-        V[Validation]
-        O[optimizer.py]
-        B[benchmark.py]
-    end
+    UI --> L[Leaflet + OpenStreetMap]
+    UI --> F[Flask REST API]
 
-    subgraph Optimization
-        OR[Google OR-Tools]
-    end
+    F --> V[Validation]
+    V --> O[optimizer.py]
 
-    subgraph Routing
-        OSRM[OSRM]
-        OSM[OpenStreetMap data]
-    end
+    O --> T[OSRM Table Service]
+    T --> M[Distance / Duration Matrix]
+    M --> OR[Google OR-Tools]
 
-    UI --> F
-    UI --> L
-    F --> V
-    V --> O
-    F --> B
-    O --> OR
-    O --> OSRM
-    B --> O
-    OSRM --> OSM
+    OR --> P[Vehicle assignment + visit order]
+    P --> R[OSRM Route Service]
+    R --> G[Road Geometry + Distance + Duration]
+
+    G --> F
     F --> UI
+
+    F --> B[benchmark.py]
+    B --> O
 ```
 
 ## 2. Frontend
@@ -153,3 +143,16 @@ sequenceDiagram
     Flask-->>Web: JSON kết quả
     Web->>Web: Hiển thị tuyến và thống kê
 ```
+
+## 8. Lý do tách OSRM và OR-Tools
+
+Hai thành phần giải hai bài toán khác nhau:
+
+- **OSRM** trả lời: khoảng cách/thời gian lái xe giữa các tọa độ là bao nhiêu và
+  đường thực tế đi qua đâu.
+- **OR-Tools** trả lời: nên phân các điểm cho xe nào và nên ghé theo thứ tự nào
+  để giảm tổng chi phí dưới ràng buộc sức chứa.
+
+Việc tách hai vai trò này giúp phần tối ưu không phụ thuộc vào cách hiển thị bản
+đồ và cho phép thay đổi routing engine trong tương lai mà không phải viết lại
+toàn bộ mô hình CVRP.
