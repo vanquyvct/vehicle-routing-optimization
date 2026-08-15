@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -9,7 +8,6 @@ from optimizer import optimize_cvrp
 
 
 BASE_DIR = Path(__file__).resolve().parent
-
 app = Flask(__name__)
 
 
